@@ -8,8 +8,8 @@ library(usmap)
 
 options(tigris_use_cache = TRUE)
 
-clCSV  <- "2024-fmr-counties.csv"
-regData <- read_sf('spfile/cb_2018_us_county_500k.shp')
+clCSV  <- "datasets/2024-fmr-counties.csv"
+regData <- read_sf('2018-county-spfile/cb_2018_us_county_500k.shp')
 cregIDs <- c("PA", "DE", "MD", "VA", "WV", "GA")
 mregIDs <- fips(cregIDs)
 cregCol  <- "state"
