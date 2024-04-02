@@ -3,51 +3,59 @@ library(ggplot2)
 library(dplyr)
 library(stringr)
 library(data.table)
+library(sf)
+library(usmap)
 
 options(tigris_use_cache = TRUE)
 
-clCSV  <- "2024-fmr-sa-fixed2.csv"
+clCSV  <- "2024-fmr-counties.csv"
+regData <- read_sf('spfile/cb_2018_us_county_500k.shp')
+cregIDs <- c("PA", "DE", "MD", "VA", "WV", "GA")
+mregIDs <- fips(cregIDs)
+cregCol  <- "state"
+cIDCol  <- "fips"
+cclCol  <- "fmr_0"
+mregCol <- "STATEFP"
+mIDCol  <- "GEOID"
+
 clData <- data.table(read.csv(clCSV, header=T, check.names = FALSE))
-states <- c("PA", "DE", "MD", "VA")
-stateSearch <- paste0("(", paste(states, collapse = "|"), ")")
-print(stateSearch)
-clData <- clData %>% filter(str_detect(state, stateSearch))
-# clData <- clData %>% filter(state %in% states)
-# clData <- clData[state == "DE" | state == "PA-NJ-DE-MD" | state == "PA" | state == "MD" | state == "WV-MD" | state == "DC-VA-MD"]
-clData$zip_code <- as.character(clData$zip_code)
-# deData$"0BR" <- as.integer(deData$"0BR")
+regSearch <- paste0("(", paste(cregIDs, collapse = "|"), ")")
+print(regSearch)
+print(mregIDs)
+clData <- clData %>% filter(str_detect(.data[[cregCol]], regSearch))
+regData <- regData %>% filter(.data[[mregCol]] %in% mregIDs)
+# clData[[cIDCol]] <- as.character(clData[[cIDCol]])
 
-for(code in states) {
-  print(code)
-  stzc <- zctas(year = 2000, state = code, cb = TRUE)
-  if (exists("zipcodes")) {
-    zipcodes <- bind_rows(stzc, zipcodes)
-  } else {
-    zipcodes <- stzc
-  }
-}
+# for(id in mregIDs) {
+#   print(id)
+#   # stData <- zctas(year = 2000, state = mregIDs, cb = TRUE)
+#   # stData <- counties(state = id)
+#   if (exists("regData")) {
+#     regData <- bind_rows(stData, regData)
+#   } else {
+#     regData <- stData
+#   }
+# }
 
-# dezc <- zctas(year = 2000, state = "DE", cb = TRUE)
-# mdzc <- zctas(year = 2000, state = "MD", cb = TRUE)
-# pazc <- zctas(year = 2000, state = "PA", cb = TRUE)
-# vazc <- zctas(year = 2000, state = "VA", cb = TRUE)
-
-# zipcodes <- bind_rows(dezc, mdzc, pazc, vazc)
-
-nrow(zipcodes)
+nrow(regData)
 nrow(clData)
-unique(clData$state)
+unique(clData[[cregCol]])
 
-us_states <- states(progress_bar = FALSE)
-basemap <- us_states %>% filter(STUSPS %in% states)
+usStates <- states(progress_bar = FALSE)
+basemap <- usStates %>% filter(STUSPS %in% cregIDs)
 
-clzc <- merge(zipcodes, clData, by.x=c("NAME"), by.y=c("zip_code"))
+mgData <- merge(regData, clData, by.x=c(mIDCol), by.y=c(cIDCol))
+colnames(mgData)
 
 ggplot() +
   geom_sf(data = basemap) +
-  geom_sf(data = clzc, aes(fill = BR1), linewidth = 0.1) +
-  scale_fill_gradientn(colors = c("blue", "cornsilk", "red"),
-                       values = c(0, 0.03, 1), guide = "none") +
-  theme_minimal()
+  geom_sf(data = mgData, aes(fill = .data[[cclCol]]), linewidth = 0.1) +
+  scale_fill_gradientn(colors = c("blue", "cornsilk", "red")) +
+  theme_void()
+
+# read_sf('spfile/cb_2018_us_county_500k.shp') %>%
+#   filter(STATEFP %in% c(17, 18, 26, 55)) %>%
+#   ggplot() +
+#   geom_sf(aes(fill = STATEFP))
 
 ggsave(filename="testmap.pdf")
